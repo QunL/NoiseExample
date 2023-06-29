@@ -6,7 +6,8 @@ from dissononce.cipher.chachapoly import ChaChaPolyCipher
 from dissononce.dh.x25519.x25519 import X25519DH
 from dissononce.hash.blake2s import Blake2sHash
 #from dissononce.hash.sha256 import SHA256Hash
-from dissononce.processing.handshakepatterns.interactive.NX import NXHandshakePattern
+from dissononce.processing.handshakepatterns.interactive.IK import IKHandshakePattern
+from dissononce.dh.public import PublicKey
 from dissononce.processing.impl.cipherstate import CipherState
 from dissononce.processing.impl.handshakestate import HandshakeState
 from dissononce.processing.impl.symmetricstate import SymmetricState
@@ -15,6 +16,10 @@ PORT = 50007              # The same port as used by the server
 ALGO = ChaChaPolyCipher() # AESGCMCipher()
 def main():
     'main'
+    # prepare server public key.
+    pubkey_bytes = binascii.a2b_hex('e53bb70c354b60d62a0bace9f897b76dcf11f4151feab245ed903175c57a3f12')
+    server_pubkey = PublicKey(len(pubkey_bytes), pubkey_bytes)
+    client_key = X25519DH().generate_keypair()
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((HOST, PORT))
         #shake hand.
@@ -25,7 +30,7 @@ def main():
                                                 ),
                                             X25519DH(),)
         prologue = b'RandomData'
-        our_handshakestate.initialize(NXHandshakePattern(), True, prologue)
+        our_handshakestate.initialize(IKHandshakePattern(), True, prologue, s=client_key, rs=server_pubkey)
         message_buffer = bytearray()
         our_handshakestate.write_message(b"AuthDataSignedBySecKey", message_buffer)
         print("Send:", len(message_buffer), message_buffer)
